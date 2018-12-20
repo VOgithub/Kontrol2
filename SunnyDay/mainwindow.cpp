@@ -25,106 +25,86 @@ void MainWindow::on_pushButton_OpenFile_clicked()
 {
      QString qsResult;
      QString qsTemp =ui->lineEdit_OpenFile->text();
-     qsTemp="1629936492_0_v1_1545203239277.csv";
+ //    qsTemp="1629936492_0_v1_1545203239277.csv";
      qsResult=readFromFile(qsTemp);
-
-
-
-
+     ui->textBrowser_Output->append(qsResult+"\n");
 }
 
 QString MainWindow::readFromFile(QString fileName)
 {
-  //   qDebug()<< "ReadF from -  "<< fileName;
+     QStringList qslTemp,qslNulldata, qslMaxSun;
+     QString qsStartLine="0.0,0,0,0" ;
       char buf[1024];
           int Counter = 0;
      QFile inputFile(fileName);   //открыли файл
      if (!inputFile.open(QIODevice::ReadOnly | QIODevice::Text)){
          return "";
      }
-  //   if ()
-//      qDebug()<< "buf is -  "<< buf;
+     qslMaxSun=qsStartLine.split(',');
+     qslNulldata=qsStartLine.split(',');
    while(!inputFile.atEnd()){
      inputFile.readLine(buf,1024);
      Counter++;
      QString qsOneLine(buf);
      qsOneLine=qsOneLine.trimmed();  // удаляем лишнее из строки
-     qDebug()<< "read from "<< fileName << " one line is:"<< qsOneLine;
+//     qDebug()<< "read- "<< fileName << ",line ="<< qsOneLine<< ", # - "<< Counter;
 
-     //Сюда проверку!!
-
-     ui->textBrowser_Output->setText(qsOneLine);
-
-     process_line(qsOneLine);
-     analiseString(qsOneLine);
-     //qsOneLine=Counter.toString();
-      //ui->textBrowser_Output->append(qsOneLine);
-     // qDebug() << Counter;
- //    ui->pushButton_Sort->click();  textBrowser_Output
-
-      }
-     return "";
-
-
+     qslTemp=process_line(qsOneLine);// в формате lux,data,0,day
+     if (qslTemp[3].toInt()==qslNulldata[3].toInt()){ //если сегодня, то суммируем lux
+         int DayCounter = qslNulldata[2].toInt();
+         DayCounter++;
+         QString qsDay = QString::number(DayCounter);
+         qslNulldata[2]= qsDay;
+         double dTmp = qslNulldata.at(0).toDouble()+qslTemp.at(0).toDouble();//lux+lux
+         QString qsTemp = QString::number(dTmp,'f',6);// back to QString
+         qslNulldata[0]=qsTemp; //lux=summ lux in QString
+         qslNulldata[1]=qslTemp[1];
+        } else {
+        if (qslNulldata[3].toInt()!=0){
+            double dMedLux = qslNulldata.at(0).toDouble()/qslNulldata.at(2).toInt() ;
+            QString qsLuxToStr =QString::number(dMedLux,'f',6);
+         ui->textBrowser_Output->append(qslNulldata[1]+", средная освещенность дня: "
+                 +qsLuxToStr+" lux");
+       }
+         qslNulldata= qslTemp;
+  }
+     qslMaxSun= CompareString(qslNulldata, qslMaxSun); // сравниваем по lux, выбираем max
+     double dMedLux = qslMaxSun.at(0).toDouble()/qslMaxSun.at(2).toInt() ;
+     QString qsLuxToStr =QString::number(dMedLux,'f',6);
+     qsStartLine="Самый светлый день был в "+qslMaxSun[1]+" и достиг среднего значения: "+qsLuxToStr+" lux \n";
+   }
+     return qsStartLine; // сюда qslMaxSun в формате QString
 }
 
-void MainWindow::process_line(QString input)
+QStringList MainWindow::process_line(QString input)
 {
+    int day;
     QStringList qsl = input.split(',');
     if(qsl.size()==3){
         double lux = qsl.at(0).toDouble();
 
         QString qsTemp = QString::number(lux,'f',6);
-        qsl[0]=qsTemp;
+        qsl[0]=qsTemp; //   в qsl[0] строка = lux
 
-        //qDebug() << "QSL at 1 :" << qsl.at(1);
         qint64 unixTimeMilSec = static_cast<qint64>(qsl.at(1).toLongLong()); //unixTimeMilSec = INT !!!!!!
-        //qint64 unixTimeSec = (unixTimeMilSec/ static_cast<qint64>(1000));
         QDateTime dt =QDateTime::fromMSecsSinceEpoch(unixTimeMilSec);
         qsTemp = dt.toString();
-        //qDebug() << "Lux :" << lux << "unixTimeSec" << unixTimeSec << "dt: " << qsTemp << "Current hour: " << dt.time().hour();
-        qsl.append(qsTemp);
-        for (int i = 0; i < qsl.size(); ++i) {
-            //qDebug() << "QSL at "<<i << " : "<< qsl.at(i);
-        }
-        QString outStr = qsl.join(';');
-        outStr.append("\n");
-        ui->textBrowser_Output->append("Data is: ");
-        ui->textBrowser_Output->append(outStr);
-
-    }
+        qsTemp.remove(10,8);
+        qsl[1]=qsTemp; //    в qsl[1] строка = дата типа " Пн дек 10 01:53:00 2018"
+        day = dt.date().day(); //day !!  = 10
+        qsl.append(QString::number(day));
+     }
+    return qsl;
 }
 
-void MainWindow::analiseString(QString input)
+QStringList MainWindow::CompareString(QStringList inputA, QStringList inputB)
 {
-    QString  qsTemp;
-    QString qsData;
-    double dLuxCounter =0;
-
-     QStringList qsl = input.split(',');
-    if(qsl.size()==3){
-        double lux = qsl.at(0).toDouble(); //v luxah
-        qint64 unixTimeMilSec = static_cast<qint64>(qsl.at(1).toLongLong());
-        QDateTime dt = QDateTime::fromMSecsSinceEpoch(unixTimeMilSec); //
-        qsTemp = dt.toString();
-        dLuxCounter=dLuxCounter+lux ;
-
-       qsData = qsTemp.at(7);
-       qsData.append(qsTemp.at(8));
-          qDebug() << "Lux :" << lux << "unixTimeSec" << unixTimeMilSec << "dt: "<< qsTemp << dt.time().hour()  << "Day is:"<<qsData;
-        ui->textBrowser_Output->append("Lux = "+QString::number(dLuxCounter));
-
-
-
-
-
-
- //       QDate date =   "Current hour: "
- //   cur_date = qsl[1].date();   7/8
- //   qDebug() << "date - " << cur_date;
-    }
-
-
+    QStringList qslResult;
+    if (inputA.at(0).toDouble() >= inputB.at(0).toDouble()){
+        qslResult=inputA;
+    } else { qslResult=inputB; }
+     return qslResult;
 }
+
 
 

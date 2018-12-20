@@ -19,11 +19,10 @@ private slots:
     void on_pushButton_OpenFile_clicked();
 
 private:  //sami!!
-  //  QString sort(QString qsInput);
-  //  bool writeToFile(QString qsWord);
+
     QString readFromFile(QString fileName);
-    void process_line(QString input);
-    void analiseString(QString input);
+    QStringList process_line(QString input);
+    QStringList CompareString(QStringList inputA, QStringList inputB );
 
 
 private:
